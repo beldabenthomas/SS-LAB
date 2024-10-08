@@ -16,7 +16,7 @@ def run_assembler(input_path, optab_path):
             mnemonic, machine_code = line.strip().split()
             optab[mnemonic] = machine_code
 
-    # Pass 1: Process the input file, build SYMTAB and create intermediate file
+    # Pass 1
     with open(input_path, 'r') as fin:
         for line in fin:
             line = line.strip().split()
@@ -33,9 +33,8 @@ def run_assembler(input_path, optab_path):
                 locctr = int(operand, 16)  # Convert operand to hexadecimal
                 program_name = label  # Save program name
                 intermediate_lines.append(f"{locctr:04X}\t{label or ''}\t{opcode}\t{operand}")
-                continue  # Skip to the next line after handling START
-
-            # Add to intermediate file representation
+                continue  
+            
             intermediate_lines.append(f"{locctr:04X}\t{label or ''}\t{opcode}\t{operand}")
 
             # Add label to SYMTAB if it's not a duplicate
@@ -44,18 +43,18 @@ def run_assembler(input_path, optab_path):
 
             # Update LOCCTR based on instruction or directive
             if opcode in optab:
-                locctr += 3  # Assuming all machine instructions take 3 bytes
+                locctr += 3  
             elif opcode == 'WORD':
                 locctr += 3
             elif opcode == 'RESW':
-                locctr += 3 * int(operand)  # RESW takes 3 bytes per word
+                locctr += 3 * int(operand)  
             elif opcode == 'RESB':
-                locctr += int(operand)  # RESB takes the size in bytes
+                locctr += int(operand)  
             elif opcode == 'BYTE':
                 if operand.startswith('C'):
-                    locctr += len(operand) - 3  # Length of character constant
+                    locctr += len(operand) - 3  
                 elif operand.startswith('X'):
-                    locctr += (len(operand) - 3) // 2  # Length of hex constant
+                    locctr += (len(operand) - 3) // 2  
             elif opcode == 'END':
                 intermediate_lines.append(f"{locctr:04X}\t{label or ''}\t{opcode}\t{operand}")
                 break
@@ -71,20 +70,20 @@ def run_assembler(input_path, optab_path):
 
         if len(parts) == 4:
             locctr_str, label, opcode, operand = parts
-            locctr = int(locctr_str, 16)  # Convert locctr back to int for calculations
+            locctr = int(locctr_str, 16)  
         else:
             locctr_str, opcode, operand = parts
             label = None
-            locctr = int(locctr_str, 16)  # Convert locctr back to int for calculations
+            locctr = int(locctr_str, 16)  
 
         object_code = None
 
         # Generate object code for each instruction
         if opcode in optab:
             if operand in symtab:
-                object_code = f"{optab[opcode]}{symtab[operand]:04X}"  # Opcode + Symbol Address
+                object_code = f"{optab[opcode]}{symtab[operand]:04X}" 
             else:
-                object_code = f"{optab[opcode]}{int(operand):04X}"  # Opcode + Numeric Operand
+                object_code = f"{optab[opcode]}{int(operand):04X}"  
         elif opcode == 'WORD':
             object_code = f"{int(operand):06X}"
         elif opcode == 'BYTE':
@@ -95,14 +94,14 @@ def run_assembler(input_path, optab_path):
         elif opcode in ['RESW', 'RESB', 'END']:
             continue  # No object code for these
 
-        # Initialize starting address on START directive
+       
         if starting_address is None and opcode == 'START':
             starting_address = locctr
 
         # Prepare text records
         if object_code:
             current_record.append(object_code)
-            current_length += len(object_code) // 2  # Each object code is 2 characters per byte
+            current_length += len(object_code) // 2  
 
             # If length exceeds 30 bytes, create a new text record
             if current_length > 30 or len(current_record) == 10:
@@ -110,22 +109,22 @@ def run_assembler(input_path, optab_path):
                 text_records.append(text_record)
                 current_record = []
                 current_length = 0
-                starting_address = locctr  # Set to current locctr for next record
+                starting_address = locctr  
 
     # If there are any remaining object codes to record
     if current_record:
         text_record = f"T^{starting_address:06X}^{current_length:02X} " + " ".join(current_record)
         text_records.append(text_record)
 
-    # Generate the header record
+   
     length = locctr - (starting_address if starting_address else 0)  # Calculate the length of the program
     header_record = f"H^{program_name}^{starting_address:06X}^{length:06X}"
     object_code_lines.append(header_record)  # Append header at the beginning
 
-    # Add the end record
+    
     object_code_lines.append(f"E^{starting_address:06X}")
 
-    # Return both the intermediate representation, symbol table, and final object code
+    
     return intermediate_lines, symtab, object_code_lines, text_records
 
 # GUI Setup
@@ -147,20 +146,16 @@ def run_gui():
         try:
             intermediate_lines, symtab, object_code_lines, text_records = run_assembler(input_path, optab_path)
 
-            # Clear text fields before outputting new data
             intermediate_text.delete(1.0, tk.END)
             symtab_text.delete(1.0, tk.END)
             object_code_text.delete(1.0, tk.END)
 
-            # Display intermediate lines
             for line in intermediate_lines:
                 intermediate_text.insert(tk.END, line + "\n")
 
-            # Display symbol table
             for label, address in symtab.items():
                 symtab_text.insert(tk.END, f"{label}\t{address:04X}\n")
 
-            # Display object code with text records
             for line in object_code_lines:
                 object_code_text.insert(tk.END, line + "\n")
             for line in text_records:
@@ -172,22 +167,22 @@ def run_gui():
     # GUI layout
     root = tk.Tk()
     root.title("---BELDA'S PASS1 AND PASS2 ASSEMBLER---")
-    root.configure(bg='light yellow')  # Set background color to light yellow
+    root.configure(bg='light yellow') 
 
     # Input file section
     tk.Label(root, text="INPUT FILE :", bg='light yellow').grid(row=0, column=0, padx=10, pady=5, sticky='e')
     input_file_path = tk.StringVar()
     tk.Entry(root, textvariable=input_file_path, width=50).grid(row=0, column=1, padx=10, pady=5)
-    tk.Button(root, text="Browse", command=load_input_file, bg='light blue').grid(row=0, column=2, padx=10, pady=5)  # Light blue button
+    tk.Button(root, text="Browse", command=load_input_file, bg='light blue').grid(row=0, column=2, padx=10, pady=5)  
 
     # Opcode table file section
     tk.Label(root, text="OPCODE FILE:", bg='light yellow').grid(row=1, column=0, padx=10, pady=5, sticky='e')
     optab_file_path = tk.StringVar()
     tk.Entry(root, textvariable=optab_file_path, width=50).grid(row=1, column=1, padx=10, pady=5)
-    tk.Button(root, text="Browse", command=load_optab_file, bg='light blue').grid(row=1, column=2, padx=10, pady=5)  # Light blue button
+    tk.Button(root, text="Browse", command=load_optab_file, bg='light blue').grid(row=1, column=2, padx=10, pady=5)  
 
     # Run button
-    tk.Button(root, text="Run Assembler", command=run_assembler_and_display, bg='light green').grid(row=2, column=0, columnspan=3, padx=10, pady=10)  # Light green button
+    tk.Button(root, text="Run Assembler", command=run_assembler_and_display, bg='light green').grid(row=2, column=0, columnspan=3, padx=10, pady=10)  
 
     # Intermediate output section
     tk.Label(root, text="Intermediate Code:", bg='light yellow').grid(row=3, column=0, sticky='w')
